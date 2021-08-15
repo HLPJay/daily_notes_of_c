@@ -1,0 +1,221 @@
+libavformat：用于各种音视频封装格式的生成和解析，包括获取解码所需信息以生成解码上下文结构和读取音视频帧等功能，包含demuxers和muxer库。
+libavcodec：用于各种类型声音/图像编解码。
+libavutil：包含一些公共的工具函数。
+libswscale：用于视频场景比例缩放、色彩映射转换。
+libpostproc：用于后期效果处理。
+ffmpeg：是一个命令行工具，用来对视频文件转换格式，也支持对电视卡实时编码。
+ffsever：是一个HTTP多媒体实时广播流服务器，支持时光平移。
+ffplay：是一个简单的播放器，使用ffmpeg 库解析和解码，通过SDL显示。
+ffprobe：收集多媒体文件或流的信息，并以人和机器可读的方式输出。
+
+
+
+1：拷贝需要的头文件  
+	ffmpeg的头文件 和so==》
+	alsa的头文件和so应该在系统中是包含的
+	
+	
+	1：提取到所有的声卡以及保存它对应的id
+	2：根据pcm去判断对应的card id是否有相关的播放功能
+	3：如果有，提取对应的主设备号和次设备号，填入alsa进行播放
+
+通过wav,mp3,aac来获取相关头的信息，
+然后解码为pcm进行播放~
+
+
+1：安装ffmpeg，安装alsa，安装alsa(先用系统直接安装)，安装sdl
+2: 实现用ffmpeg对各种的转码, 并对转码后的文件进行测试。
+3: 实现alsa播放功能；
+4：实现sdl的播放功能
+5：使用ffmpeg一起实现目标功能
+
+
+环境问题：
+	1：换源执行软件更新
+	2：设备查询，播放相关的软件： sudo apt install alsa-utils
+		使用aplay测试wav文件的播放，确定虚拟机播放音乐ok
+	3：安装ffmpeg，安装dsl
+		使用源码包安装： sudo apt  install -y yasm  
+						 ./configure --enable-shared  --prefix=/usr/local/ffmpeg
+						 make
+						 sudo make install
+	4：安装sdl
+	5: 测试代码：
+		gcc ffmpeg_sdl_mp3.c -o ffmpeg_sdl_mp3 -I /usr/local/ffmpeg/include -L /usr/local/ffmpeg/lib/ -lavformat -lavutil -lavcodec -lavdevice -lswresample -lswscale -lm -lSDL2
+		
+	添加动态链接库：
+		sudo vim /etc/profile
+		export FFMPEG_HOME=/usr/local/ffmpeg
+		export PATH=$FFMPEG_HOME/bin:$PATH
+		执行 source etc/profile 
+	添加环境变量：
+		sudo vim ~/.bashrc ?
+	配置ffmpeg依赖环境：
+		sudo vi /etc/ld.so.conf
+		在其中添加路径：
+			/usr/local/ffmpeg/lib
+			
+		sudo ldconfig#更新环境变量
+		
+		
+	1：有关音频播放相关的资料或者源码，WAV，aac, mp3格式等？
+		aac和MP3直接调用ffmpeg中的库直接转
+		wac只是在pcm的头上加了相关的头
+	2：有关WAV，aac，MP3格式播放时参数设置的要求？
+		.m4a,aac文件可以直接播放。mp3文件需要调整SDL音频帧大小为4608（默认是4096），否则播放会不流畅
+		1：设置相关的参数，这里最好的方法应该是直接从解析数据中获取到
+		2：查找相关的音频流，获取相关的参数并进行设置
+		3: SDL_OpenAudio 打开音频设备
+		4: 读包，解码，写入或者播放
+		5：使用swr_convert 进行重采样
+	3：SDL的api和播放原理：
+		打开音频设备： int SDL_OpenAudio(SDL_AudioSpec* desired, SDL_AudioSpec* obtained)
+			desired: 设置音频参数。
+				freq 每秒采频率   SDL_AudioFormat 音频数据存储格式   channels 通道数   silence 静音值   samples 采样个数   size 音频缓冲区大小   SDL_AudioCallback 回调函数   userdata 回调函数参数指针    
+			obtained: 返回参数。
+		关闭音频设备： void SDL_CloseAudio(void)
+		播放与暂停：  void SDL_PauseAudio(int pause_on)   
+				pause_on: 0, 暂停播放；1, 播放；
+		喂数据： void SDL_MixAudio(Uint8* dst, const Uint8* src, Uint32 len, int volume)
+				dst: 目的缓冲区
+				src: 源缓冲区
+				len: 音频数据长度
+				volume: 音量大小，0-128 之间的数。SDL_MIX_MAXVOLUME代表最大音量。
+		在设置参数的时候，给参数设置了一个回调函数，通过回调函数来实现给声卡输入数据。
+		
+		
+		
+		g++ ./wav/wav_parser.cpp wav/wav_controller.cpp ./aac_or_mp3_c/MP3_AAC_controller.cpp play_common.cpp main.cpp -o main -I ./include  -L./lib/ffmpeg/ -lavformat -lavutil -lavcodec -lavdevice -lswresample -lswscale -lSDL2 -lasound
+		-I /usr/local/ffmpeg/include -L /usr/local/ffmpeg/lib/
+		g++ ./wav/wav_parser.cpp wav/wav_controller.cpp ./aac_or_mp3_c/MP3_AAC_controller.cpp play_common.cpp main.cpp -o main -I /usr/local/ffmpeg/include -L /usr/local/ffmpeg/lib/ -lavformat -lavutil -lavcodec -lavdevice -lswresample -lswscale -lSDL2 -lasound
+		
+		1：
+		
+		
+		假如我不关注他的环境：
+			1:include 和相关的lib
+			
+			
+			
+g++ -std=c++11 -o decoder video_decoder.cpp -lglog -L$FFMPEG_HOME/lib -lavformat -lavdevice -lavcodec -lavutil -lswresample -lswscale -lpthread -ldl -lbz2 -lm -lz -llzma
+
+ 
+
+经常，调用ffmpeg的静态库，生成自己的动态库的时候，会遇到类似的错误：
+
+ 
+
+: relocation R_X86_64_32 against `.rodata' can not be used when making a shared object; recompile with -fPIC
+
+ 
+
+那么，如何解决呢？如何在编译ffmpeg的静态库时添加fPIC选项呢？ ffmpeg许多文档说的还是不明了的。
+
+ 
+
+首先， 编译ffmpeg静态库的时候，执行如下操作:
+
+./configure --prefix=$FFMPEG_HOME --pkg-config-flags="--static" --enable-pic --extra-cflags="-fPIC" --extra-cxxflags="-fPIC"
+
+其次，在链接ffmpeg静态库的时候，如下配置编译选项（-Wl,-Bsymbolic ）：
+
+gcc -std=c++11 -shared -fPIC -Wl,-Bsymbolic -O3 -fvisibility=hidden -o libvideoaction.so *.cpp -lglog -I. -I$FFMPEG_HOME/include -L$FFMPEG_HOME/lib -lavformat -lavdevice -lavco    dec -lavutil -lswresample -lswscale -ldl -lbz2 -lm -lz -llzm即可
+
+
+
+把ffmpeg编译成静态库
+	sudo apt  install -y yasm  
+	 ./configure --enable-shared  --prefix=/usr/local/ffmpeg --pkg-config-flags="--static"
+	 make
+	 sudo make install
+	 
+
+1：cat /proc/asound/version 查看版本
+2：
+
+
+
+
+
+
+1：音频设备相关的整理
+2：基于alsa的三种音频的播放
+3：基于SDL的三种音频的播放 https://blog.csdn.net/coloriy/article/details/80171700
+4：makefile的搭建
+5：要选择对应的
+6：相关的第三方库的demo ：https://www.alsa-project.org/alsa-doc/alsa-lib/_2test_2pcm_8c-example.html
+7：包装，项目依赖中的头文件和so 
+8：整理相关函数的介绍： https://blog.csdn.net/explorer_day/article/details/76332556
+9：ffmpeg重采样：https://www.freesion.com/article/98361419236/
+
+
+
+1：apt-cache search libasound  查看相关的软件包
+2：apt-cache show libasound2-dev  查看对应的软件包版本
+3：下载对应的版本包，进行静态安装 提取对应的.a文件
+4: 修改Makefile，使用静态库链接进行编译
+
+
+
+./configure --prefix=/home/ubuntu/alsa/alsa_lib --disable-mixer --enable-static=yes --enable-shared=no
+
+
+我想问一下：
+	目标是只需要在那个测试代码中能正常播放，没有报错，环境ok就好？
+	代码质量，架构，其他问题只要没有流程性异常问题，就可以？
+	
+	
+linux会链接动态库，找不到动态库就会找静态库，加-static直接链接静态库
+
+
+查看ubuntu 版本 cat /etc/os-release
+纯净环境进行测试：
+	发现linux自带的声音系统无法播放，需要重新安装
+		去除系统自带声音模块
+		sudo apt-get --purge remove linux-sound-base alsa-base alsa-utils
+		重新安装，并安装最新模块：
+		sudo apt-get install linux-sound-base alsa-base alsa-utils
+	然后用apt-cache search和apt-cache show查找对应的版本，安装对应的.a文件
+	直接进行播放
+已有的环境已经被污染了，有没有纯净的环境？ 
+
+
+拿一个纯净的环境  
+
+
+这个环境是什么场景啊？
+	是ubuntu14的版本，然后升级到16？
+
+
+第一：代码质量，仅仅是测试的demo
+第二：环境？   纯净的ubuntu 16环境测试可以，
+
+wget命令？
+tar命令的相关使用 以及参数
+
+获取源码包和源码：
+https://blog.csdn.net/yuanlu837/article/details/7750492
+apt-cache https://blog.csdn.net/apache6/article/details/5625460
+undefined reference to `dlsym' https://blog.csdn.net/qq_44842973/article/details/107373190
+
+编译链接：
+	https://blog.csdn.net/surgewong/article/details/39236707
+alsa 静态库
+	https://blog.csdn.net/kunkliu/article/details/80007522
+ubuntu安装ffmpeg：
+	https://www.jianshu.com/p/d461a27edf0d
+alsa test:
+	https://www.alsa-project.org/alsa-doc/alsa-lib/_2test_2pcm_8c-example.html
+ffmpeg+alsa：
+	https://chouti.blog.csdn.net/article/details/113695358
+ffmpeg拉流+alsa播放：
+	https://blog.csdn.net/pk296256948/article/details/112917156
+资源：
+	https://juejin.cn/post/6844903815918026760
+	
+WAV格式：
+	https://www.jianshu.com/p/5a91edee4871
+alsa底层介绍：
+	https://blog.csdn.net/longwang155069/article/details/53260731
+linux音频驱动：
+	https://blog.csdn.net/longwang155069/article/details/53306395

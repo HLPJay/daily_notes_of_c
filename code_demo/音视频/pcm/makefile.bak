@@ -1,0 +1,16 @@
+CC = gcc
+TARGET = audio_play_test
+SRCS := $(wildcard *.c) 
+OBJS := $(patsubst %c, %o, $(SRCS))
+INCLUDES = -I../include
+LDDIR=-L../lib/ffmpeg
+LDFLAGS= -lavformat -lavutil -lavcodec -lavdevice -lswresample -lswscale -lSDL2 -lm
+CFLAGS= -Wall -O2 $(INCLUDES)
+
+all: $(TARGET) 
+$(TARGET): $(OBJS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDDIR) $(LDFLAGS)
+	$(CC) $(CFLAGS) -c $<
+
+clean: 
+	rm -f *.o $(TARGET)
